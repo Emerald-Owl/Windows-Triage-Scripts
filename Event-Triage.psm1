@@ -268,3 +268,38 @@ function Get-OutboundRDPSucc{
     }
     $results 
 }
+
+
+function Get-PowerShellEvents{
+    # Define the regular expression pattern to extract the command
+    $pattern = "(?s)(?<=HostApplication=)(.*?)(?=EngineVersion=)"
+
+    # Get the PowerShell events with ID 400
+    $events = Get-WinEvent -FilterHashtable @{LogName='Windows PowerShell'; ID=400} 
+
+    # Define a custom object array to store the results
+    $commandLogs = @()
+
+    # Loop through each event
+    foreach ($event in $events) {
+        # Convert the event to XML
+        $eventXml = [xml]$event.ToXml()
+
+        # Extract the third Data field from the event's EventData
+        $dataField = $eventXml.Event.EventData.Data[2]
+
+        if ($dataField -match $pattern) {
+            $command = $Matches[0]
+
+            # Add the extracted details to the results array
+            $commandLogs += [PSCustomObject]@{
+                TimeStamp = $event.TimeCreated.ToUniversalTime()
+                Command   = $command
+            }
+        }
+    }
+
+    # Output the results
+    $commandLogs | Format-Table -AutoSize
+}
+
