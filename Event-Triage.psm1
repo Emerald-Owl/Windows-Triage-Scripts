@@ -405,12 +405,15 @@ function Get-SysmonCheck{
 }
 
 function Get-SysmonProcessCreate{
+    # Collect params, start/end date, and how many events to grab. 
+    # Defaults to 99999 events and anything from 01/01/1980 to the day after execution 
     param(
         [string]$startDate = "01/01/1980",
         [string]$endDate = ((Get-Date).AddDays(1)).ToString("MM/dd/yyyy"),
         [int]$maxEvents = 999999
     )
     
+    # Check for MM/dd/yyyy formatting of the start date param
     try {
         $startDateTime = [datetime]::ParseExact($startDate, "MM/dd/yyyy", $null)
         $endDateTime = [datetime]::ParseExact($endDate, "MM/dd/yyyy", $null)
@@ -420,6 +423,7 @@ function Get-SysmonProcessCreate{
         return
     }
 
+    # Query events 
     $events = Get-WinEvent -FilterHashtable @{
         LogName = "Microsoft-Windows-Sysmon/Operational";
         ID=1;
@@ -427,27 +431,32 @@ function Get-SysmonProcessCreate{
         EndTime=$endDateTime;
     } -MaxEvents $maxEvents -ErrorAction SilentlyContinue
 
-    $processCreations = @()
+    # Checks if any events were returned 
+    if ($events) {
 
-    foreach ($event in $events) {
-        $eventXml = [xml]$event.ToXml()
-        $user = $eventXml.Event.EventData.Data | Where-Object { $_.Name -eq 'User' }
-        $ProcessID = $eventXml.Event.EventData.Data | Where-Object { $_.Name -eq 'ProcessId' }
-        $OriginalFileName = $eventXml.Event.EventData.Data | Where-Object { $_.Name -eq 'OriginalFileName' }
-        $commandLine = $eventXml.Event.EventData.Data | Where-Object { $_.Name -eq 'CommandLine' }
-        $ParentCommandLine = $eventXml.Event.EventData.Data | Where-Object { $_.Name -eq 'ParentCommandLine' }
+        # Format events  
+        $processCreations = @()
+        foreach ($event in $events) {
+            $eventXml = [xml]$event.ToXml()
+            $user = $eventXml.Event.EventData.Data | Where-Object { $_.Name -eq 'User' }
+            $ProcessID = $eventXml.Event.EventData.Data | Where-Object { $_.Name -eq 'ProcessId' }
+            $OriginalFileName = $eventXml.Event.EventData.Data | Where-Object { $_.Name -eq 'OriginalFileName' }
+            $commandLine = $eventXml.Event.EventData.Data | Where-Object { $_.Name -eq 'CommandLine' }
+            $ParentCommandLine = $eventXml.Event.EventData.Data | Where-Object { $_.Name -eq 'ParentCommandLine' }
 
-        # Add the extracted details to the results array
-        $processCreations += [PSCustomObject]@{
-            TimeStamp          = $event.TimeCreated.ToUniversalTime()
-            User               = $user.'#text'
-            ProcessID          = $ProcessID.'#text'
-            OriginalFileName   = $OriginalFileName.'#text'
-            CommandLine        = $commandLine.'#text'
-            ParentCommandLine  = $ParentCommandLine.'#text'
+            # Add the extracted details to the results array
+            $processCreations += [PSCustomObject]@{
+                TimeStamp          = $event.TimeCreated.ToUniversalTime()
+                User               = $user.'#text'
+                ProcessID          = $ProcessID.'#text'
+                OriginalFileName   = $OriginalFileName.'#text'
+                CommandLine        = $commandLine.'#text'
+                ParentCommandLine  = $ParentCommandLine.'#text'
+            }
         }
+    } else {
+        Write-Host "No events found." -ForegroundColor Yellow
     }
-
     $processCreations
 }
 
