@@ -22,12 +22,23 @@ function Get-UserSessions{
     }    
     
     $results = @()
-    $logonEvents = Get-WinEvent -FilterHashtable @{
-        LogName = "Security";
-        Id = 4624;
-        StartTime=$startDateTime;
-        EndTime=$endDateTime;
-    } -MaxEvents $maxEvents -ErrorAction SilentlyContinue
+
+    try{
+        $logonEvents = Get-WinEvent -FilterHashtable @{
+            LogName = "Security";
+            Id = 4624;
+            StartTime=$startDateTime;
+            EndTime=$endDateTime;
+        } -MaxEvents $maxEvents 
+    } catch {
+        if ($_.Exception.Message -eq "Attempted to perform an unauthorized operation.") {
+            Write-Warning "Access Denied: Please run the script as an Administrator."
+        }
+        else{
+            Write-Warning "An error occurred: $($_.Exception.Message)"
+        }
+        return
+    }
     
     if ($logonEvents) {
         foreach($event in $logonEvents) {
@@ -117,43 +128,6 @@ function Get-UserSessions{
         Write-Host "No Logoff events found." -ForegroundColor Yellow
     }
     $results | Sort-Object -Descending 'Time Created (UTC)'
-}
-
-# Expirimental 
-# This one is magnituted faster, but the hardcoded values results in possible incorrect column mapping
-function Get-LogonEventsEXPIREMENTAL{
-    $events = Get-WinEvent -LogName Security -FilterXPath "*[System[EventID=4624]]" -ErrorAction SilentlyContinue
-
-    $ignoreAccounts = @('SYSTEM', 'DWM-1', 'UMFD-0', 'UMFD-1', 'ANONYMOUS LOGON', 'LOCAL SERVICE', 'NETWORK SERVICE')
-
-    $events | ForEach-Object {
-        $accountName = $_.Properties[5].Value
-
-        # Skip this iteration if the account name is in the ignore list
-        if ($ignoreAccounts -contains $accountName) {
-            return
-        }
-
-        $elevatedTokenRaw = $_.Properties[-1].Value
-        $elevatedToken = switch ($elevatedTokenRaw) {
-            "%%1843" { "No" }
-            "%%1842" { "Yes" } 
-            default { $elevatedTokenRaw } 
-        }
-
-        [PSCustomObject]@{
-            "Time Created (UTC)" = $_.TimeCreated.ToUniversalTime()
-            "Account Name" = $accountName
-            "Account Domain" = $_.Properties[6].Value
-            "Logon ID" = '0x{0:X}' -f [int64]$_.Properties[7].Value
-            "Logon Type" = $_.Properties[8].Value
-            "Process Name" = $_.Properties[17].Value
-            "Workstation Name" = $_.Properties[11].Value
-            "Source Network Address" = $_.Properties[18].Value
-            "Source Port" = $_.Properties[19].Value
-            "Elevated Token" = $elevatedToken
-        }
-    } 
 }
 
 function Get-ServicesInstalled{
@@ -385,12 +359,22 @@ function Get-FailedLogons{
     
     
     $results = @()
-    $events = Get-WinEvent -FilterHashtable @{
-        LogName = "Security";
-        Id = 4625
-        StartTime=$startDateTime;
-        EndTime=$endDateTime;
-    } -MaxEvents $maxEvents -ErrorAction SilentlyContinue
+    try{
+        $events = Get-WinEvent -FilterHashtable @{
+            LogName = "Security";
+            Id = 4625
+            StartTime=$startDateTime;
+            EndTime=$endDateTime;
+        } -MaxEvents $maxEvents 
+    } catch {
+        if ($_.Exception.Message -eq "Attempted to perform an unauthorized operation.") {
+            Write-Warning "Access Denied: Please run the script as an Administrator."
+        }
+        else{
+            Write-Warning "An error occurred: $($_.Exception.Message)"
+        }
+        return
+    }
 
     if ($events) {
         foreach($event in $events){
@@ -645,12 +629,22 @@ function Get-SecurityLogClearing{
     }
 
     # Get events with ID 1102 from the Security event log
-    $events = Get-WinEvent -FilterHashtable @{
-        LogName='Security'; 
-        ID=1102;
-        StartTime=$startDateTime;
-        EndTime=$endDateTime;
-    } -MaxEvents $maxEvents -ErrorAction SilentlyContinue
+    try{
+        $events = Get-WinEvent -FilterHashtable @{
+            LogName='Security'; 
+            ID=1102;
+            StartTime=$startDateTime;
+            EndTime=$endDateTime;
+        } -MaxEvents $maxEvents
+    } catch {
+        if ($_.Exception.Message -eq "Attempted to perform an unauthorized operation.") {
+            Write-Warning "Access Denied: Please run the script as an Administrator."
+        }
+        else{
+            Write-Warning "An error occurred: $($_.Exception.Message)"
+        }
+        return
+    }
 
     # Define a custom object array to store the results
     $clearLogs = @()
