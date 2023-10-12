@@ -1,14 +1,3 @@
-<#
-.SYNOPSIS
-Displays a basic summary of local established connections.  
-
-.DESCRIPTION
-Collects all local connections in the "Established" state,
-then displays the Creation Time, Local Address, Local Port, Remote Address,
-Remote Port, and State in a table format. 
-
-Works on Powershell v4 or greater. 
-#>
 function Get-EstablishedConnections {
     Get-NetTCPConnection | 
     Where-Object State -eq "Established" | 
