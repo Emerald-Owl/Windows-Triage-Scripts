@@ -22,23 +22,12 @@ function Get-UserSessions{
     }    
     
     $results = @()
-
-    try{
-        $logonEvents = Get-WinEvent -FilterHashtable @{
-            LogName = "Security";
-            Id = 4624;
-            StartTime=$startDateTime;
-            EndTime=$endDateTime;
-        } -MaxEvents $maxEvents 
-    } catch {
-        if ($_.Exception.Message -eq "Attempted to perform an unauthorized operation.") {
-            Write-Warning "Access Denied: Please run the script as an Administrator."
-        }
-        else{
-            Write-Warning "An error occurred: $($_.Exception.Message)"
-        }
-        return
-    }
+    $logonEvents = Get-WinEvent -FilterHashtable @{
+        LogName = "Security";
+        Id = 4624;
+        StartTime=$startDateTime;
+        EndTime=$endDateTime;
+    } -MaxEvents $maxEvents -ErrorAction SilentlyContinue
     
     if ($logonEvents) {
         foreach($event in $logonEvents) {
@@ -84,7 +73,6 @@ function Get-UserSessions{
     } else {
         Write-Host "No Login events found." -ForegroundColor Yellow
     }
-
 
     $logoffEvents = Get-WinEvent -FilterHashtable @{
         Logname = "Security";
@@ -365,7 +353,7 @@ function Get-FailedLogons{
             Id = 4625
             StartTime=$startDateTime;
             EndTime=$endDateTime;
-        } -MaxEvents $maxEvents 
+        } -MaxEvents $maxEvents -ErrorAction SilentlyContinue
     } catch {
         if ($_.Exception.Message -eq "Attempted to perform an unauthorized operation.") {
             Write-Warning "Access Denied: Please run the script as an Administrator."
@@ -636,7 +624,7 @@ function Get-SecurityLogClearing{
             StartTime=$startDateTime;
             EndTime=$endDateTime;
         } -MaxEvents $maxEvents
-    } catch {
+        } catch {
         if ($_.Exception.Message -eq "Attempted to perform an unauthorized operation.") {
             Write-Warning "Access Denied: Please run the script as an Administrator."
         }
