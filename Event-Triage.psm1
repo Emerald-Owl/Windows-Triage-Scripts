@@ -617,22 +617,12 @@ function Get-SecurityLogClearing{
     }
 
     # Get events with ID 1102 from the Security event log
-    try{
         $events = Get-WinEvent -FilterHashtable @{
             LogName='Security'; 
             ID=1102;
             StartTime=$startDateTime;
             EndTime=$endDateTime;
-        } -MaxEvents $maxEvents
-        } catch {
-        if ($_.Exception.Message -eq "Attempted to perform an unauthorized operation.") {
-            Write-Warning "Access Denied: Please run the script as an Administrator."
-        }
-        else{
-            Write-Warning "An error occurred: $($_.Exception.Message)"
-        }
-        return
-    }
+        } -MaxEvents $maxEvents -ErrorAction SilentlyContinue
 
     # Define a custom object array to store the results
     $clearLogs = @()
